@@ -1,0 +1,42 @@
+<!--
+ * @Description: 
+ * @Version: 2.0
+ * @Autor: kakachake
+ * @Date: 2021-01-01 22:43:37
+ * @LastEditors: kakachake
+ * @LastEditTime: 2021-01-02 15:33:12
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+
+    <div id="app">
+        <p>{{name}}</p>
+        <span>{{age}}</span>
+    </div>
+    <script src="/dist/umd/vue.js"></script>
+    <script>
+
+        let vm = new Vue({
+            el:"#app",
+            data(){
+                return {
+                    name:'ztm',
+                    age: 20
+                }
+            },
+            computed(){},
+            watch(){},
+            
+        })
+        console.log(vm);
+        //将template转化为render方法  虚拟dom
+
+    </script>
+</body>
+</html>

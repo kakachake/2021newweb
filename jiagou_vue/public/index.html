@@ -4,7 +4,7 @@
  * @Autor: kakachake
  * @Date: 2021-01-01 22:43:37
  * @LastEditors: kakachake
- * @LastEditTime: 2021-01-02 15:33:12
+ * @LastEditTime: 2021-01-05 00:05:35
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -15,7 +15,7 @@
 </head>
 <body>
 
-    <div id="app">
+    <div id="app" style="color: red;fontSize: 14px">heello{{name}}
         <p>{{name}}</p>
         <span>{{age}}</span>
     </div>
@@ -34,9 +34,9 @@
             watch(){},
             
         })
-        console.log(vm);
-        //将template转化为render方法  虚拟dom
-
+        console.log(vm.name);
+        vm.name = 1;
+        console.log(vm.name);
     </script>
 </body>
 </html>

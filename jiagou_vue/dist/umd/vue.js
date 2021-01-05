@@ -42,13 +42,69 @@
     return Constructor;
   }
 
+  function _slicedToArray(arr, i) {
+    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+  }
+
+  function _arrayWithHoles(arr) {
+    if (Array.isArray(arr)) return arr;
+  }
+
+  function _iterableToArrayLimit(arr, i) {
+    if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return;
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
+
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"] != null) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableRest() {
+    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
   /*
    * @Description: 
    * @Version: 2.0
    * @Autor: kakachake
    * @Date: 2021-01-02 10:06:11
    * @LastEditors: kakachake
-   * @LastEditTime: 2021-01-02 12:07:23
+   * @LastEditTime: 2021-01-05 00:06:46
    */
 
   /**
@@ -63,6 +119,17 @@
       enumerable: false,
       configurable: false,
       value: value
+    });
+  }
+  function proxy(vm, source, key) {
+    //代理取值
+    Object.defineProperty(vm, key, {
+      get: function get() {
+        return vm[source][key];
+      },
+      set: function set(newValue) {
+        vm[source][key] = newValue;
+      }
     });
   }
 
@@ -200,7 +267,7 @@
    * @Autor: kakachake
    * @Date: 2021-01-01 23:30:30
    * @LastEditors: kakachake
-   * @LastEditTime: 2021-01-01 23:53:01
+   * @LastEditTime: 2021-01-05 00:07:17
    */
   function initState(vm) {
     var opts = vm.$options; //vue数据来源 属性 方法 数据 计算属性 watch
@@ -224,21 +291,243 @@
     data = vm._data = typeof data === 'function' ? data.call(vm) : data; //对象劫持 用户改变了数据 我希望得到通知 => 刷新页面
     //mvvm模式,数据变化驱动视图变化
     //object.defineProperty() 给属性增加get和set方法
+    //为了让用户更好的使用，我希望可以直接vm.xxx获取data
+
+    for (var key in data) {
+      proxy(vm, '_data', key);
+    }
 
     observe(data); //响应式原理
   }
 
   /*
-   * @Description: 
+   * @Description: 将html转为ast语法树
    * @Version: 2.0
    * @Autor: kakachake
-   * @Date: 2021-01-02 15:28:36
+   * @Date: 2021-01-04 14:41:19
    * @LastEditors: kakachake
-   * @LastEditTime: 2021-01-02 15:34:46
+   * @LastEditTime: 2021-01-04 14:42:05
    */
-  //ast语法树，是用对象来描述js语法的， 虚拟dom用来对象来描述dom节点
+  var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z]*";
+  var qnameCapture = "((?:".concat(ncname, "\\:)?").concat(ncname, ")");
+  var startTagOpen = new RegExp("^<".concat(qnameCapture)); // 标签开头的正则 捕获的内容是标签名
+
+  var endTag = new RegExp("^<\\/".concat(qnameCapture, "[^>]*>")); // 匹配标签结尾的 </div>
+
+  var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/; // 匹配属性的
+
+  var startTagClose = /^\s*(\/?)>/; // 匹配标签结束的 >
+
+  var root = null; //ast语法树树根
+
+  var currentParent; //标识当前父亲
+
+  var stack = []; //栈
+
+  var ELEMENT_TYPE = 1;
+  var TEXT_TYPE = 3;
+
+  function createASTElement(tagName, attrs) {
+    return {
+      tag: tagName,
+      type: ELEMENT_TYPE,
+      children: [],
+      attrs: attrs,
+      parent: null
+    };
+  }
+
+  function start(tagName, attrs) {
+    var element = createASTElement(tagName, attrs);
+
+    if (!root) {
+      root = element;
+    }
+
+    currentParent = element; //把当前元素标记为父ast树
+
+    stack.push(element); //将开始标签存放到栈中
+  }
+
+  function end(tagName) {
+    var element = stack.pop();
+    currentParent = stack[stack.length - 1];
+
+    if (currentParent) {
+      console.log(element);
+      element.parent = currentParent;
+      currentParent.children.push(element);
+    }
+  }
+
+  function chars(text) {
+    text = text.replace(/\s/g, '');
+
+    if (text) {
+      currentParent.children.push({
+        text: text,
+        type: TEXT_TYPE
+      });
+    }
+  }
+
+  function parseHTML(html) {
+    while (html) {
+      var textEnd = html.indexOf('<');
+
+      if (textEnd == 0) {
+        var startTagMatch = parseStartTag();
+
+        if (startTagMatch) {
+          //匹配开始标签
+          start(startTagMatch.tagName, startTagMatch.attrs);
+          continue;
+        } else {
+          //匹配结束标签
+          var endTagMatch = html.match(endTag);
+
+          if (endTagMatch) {
+            advance(endTagMatch[0].length);
+            end(endTagMatch[1]);
+            continue;
+          }
+        }
+      }
+
+      var text = void 0; //匹配字符串
+
+      if (textEnd >= 0) {
+        text = html.substring(0, textEnd);
+      }
+
+      if (text) {
+        advance(text.length);
+        chars(text);
+      }
+    }
+
+    function advance(n) {
+      html = html.substring(n);
+    }
+
+    function parseStartTag() {
+      var start = html.match(startTagOpen);
+
+      if (start) {
+        var match = {
+          tagName: start[1],
+          attrs: []
+        };
+        advance(start[0].length);
+
+        var _end, attr;
+
+        while (!(_end = html.match(startTagClose)) && (attr = html.match(attribute))) {
+          advance(attr[0].length);
+          match.attrs.push({
+            name: attr[1],
+            value: attr[3] || attr[4] || attr[5]
+          });
+        }
+
+        if (_end) {
+          advance(_end[0].length);
+          return match;
+        }
+      }
+    }
+
+    return root;
+  }
+
+  var defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g;
+
+  function genChildren(el) {
+    var children = el;
+
+    if (children && children.length > 0) {
+      return "".concat(children.map(function (c) {
+        return gen(c);
+      }).join(','));
+    }
+  }
+
+  function gen(node) {
+    if (node.type == 1) {
+      //元素标签
+      return generate(node); //递归
+    } else {
+      var text = node.text; // a{{name}} b{{age}} c
+
+      var tokens = [];
+      var match, index;
+      var lastIndex = defaultTagRE.lastIndex = 0;
+
+      while (match = defaultTagRE.exec(text)) {
+        index = match.index;
+
+        if (index > lastIndex) {
+          tokens.push(JSON.stringify(text.slice(lastIndex, index)));
+        }
+
+        tokens.push("_s(".concat(match[1].trim(), ")"));
+        lastIndex = index + match[0].length;
+      }
+
+      if (lastIndex < text.length) {
+        tokens.push(JSON.stringify(text.slice(lastIndex)));
+      }
+
+      return "_v(".concat(tokens.join('+'), ")");
+    }
+  }
+
+  function genProps(attrs) {
+    //处理属性
+    var str = '';
+
+    for (var i = 0; i < attrs.length; i++) {
+      var attr = attrs[i];
+
+      if (attr.name === 'style') {
+        // style="color: red;fontSize: 14px" => {style:{color: 'red'}}
+        var obj = "{";
+        attr.value.split(';').forEach(function (item) {
+          var _item$split = item.split(':'),
+              _item$split2 = _slicedToArray(_item$split, 2),
+              key = _item$split2[0],
+              value = _item$split2[1]; // obj[key] = value;
+
+
+          obj += "\"".concat(key, "\":\"").concat(value, "\",");
+        });
+        obj = obj.slice(0, -1);
+        attr.value = obj + "}";
+      }
+
+      str += "".concat(attr.name, ":").concat(attr.value, ",");
+    }
+
+    return "{".concat(str.slice(0, -1), "}");
+  }
+
+  function generate(el) {
+    var code = "_c(\"".concat(el.tag, "\", ").concat(el.attrs.length > 0 ? genProps(el.attrs) : 'undefined').concat(el.children ? ",".concat(genChildren(el.children)) : '', ")\n    ");
+    return code;
+  }
+
   function compileToFunction(template) {
-    console.log(template, '---');
+    var root = parseHTML(template); //需要将ast语法树生成最终的render函数 就是字符串拼接（模板引擎）
+    //console.log(root);
+
+    var code = generate(root); //console.log(code);
+    //<div id= "app"><p>hello{{name}}</p>hello</div>
+    //将ast语法树转化为js语法
+    //_c("div", {id:app},_c("p", undefined, _v('hello')))
+
+    var renderFn = new Function("with(this){return ".concat(code, "}")); //返回的虚拟dom
+
+    return renderFn;
   }
 
   /*
@@ -247,7 +536,7 @@
    * @Autor: kakachake
    * @Date: 2021-01-01 23:23:17
    * @LastEditors: kakachake
-   * @LastEditTime: 2021-01-02 15:33:51
+   * @LastEditTime: 2021-01-05 00:15:57
    */
 
   function initMixin(Vue) {
@@ -280,8 +569,10 @@
 
 
         var render = compileToFunction(template);
-        console.log(template);
+        options.render = render;
       }
+
+      console.log(vm.$options.render);
     };
   }
 

@@ -4,7 +4,7 @@
  * @Autor: kakachake
  * @Date: 2021-01-01 23:23:17
  * @LastEditors: kakachake
- * @LastEditTime: 2021-01-02 15:33:51
+ * @LastEditTime: 2021-01-05 00:15:57
  */
 import { initState } from './state'
 
@@ -46,7 +46,8 @@ export function initMixin(Vue){
             
             //将template转化为render方法  虚拟dom
             const render = compileToFunction(template)
-            console.log(template);
+            options.render = render;
         }
+        console.log(vm.$options.render);
     }
 }

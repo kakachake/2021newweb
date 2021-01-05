@@ -4,7 +4,7 @@
  * @Autor: kakachake
  * @Date: 2021-01-02 10:06:11
  * @LastEditors: kakachake
- * @LastEditTime: 2021-01-02 12:07:23
+ * @LastEditTime: 2021-01-05 00:06:46
  */
 
  /**
@@ -20,5 +20,15 @@ export function def(data, key, value){
         enumerable:false,
         configurable: false,
         value
+    })
+}
+export function proxy(vm, source, key){ //代理取值
+    Object.defineProperty(vm, key,{
+        get(){
+            return vm[source][key];
+        },
+        set(newValue){
+            vm[source][key] = newValue;
+        }
     })
 }
